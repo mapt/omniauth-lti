@@ -7,29 +7,34 @@ module OmniAuth
       # - the key is the consumer_key 
       # - the value is the comsumer_secret
       option :oauth_credentials, {}
-      
-      # Defaul username for users when LTI context doesn't provide a name
-      option :default_user_name, 'User'
+
+      option :consumers, {}
       
       def callback_phase
-        # validate request
-        return fail!(:invalid_credentials) unless valid_lti?
+        key = request.params['oauth_consumer_key']
+        secret = options.oauth_credentials.nil? ? nil : options.oauth_credentials[key]
+        @tp = IMS::LTI::ToolProvider.new(key, secret, request.params)
+        @tp.valid_request! request
+        @consumer = options.consumers[@tp.tool_consumer_instance_guid] || {}
         #save the launch parameters for use in later request
         env['lti.launch_params'] = @tp.to_params
         super
+      rescue ::OAuth::Unauthorized => e
+        #Don't pass the exception to fail! because it isn't well formed
+        fail!(:invalid_credentials)
       end
       
       # define the UID
-      uid { @tp.user_id }
+      uid { lookup(:uid, @tp.user_id) }
       
       # define the hash of info about user
       info do
         {
-          :name => @tp.username(options.default_user_name),
-          :email => @tp.lis_person_contact_email_primary,
-          :first_name => @tp.lis_person_name_given,
-          :last_name => @tp.lis_person_name_family,
-          :image => @tp.user_image
+          :name => lookup(:name, uid),
+          :email => lookup(:email, @tp.lis_person_contact_email_primary),
+          :first_name => lookup(:first_name, @tp.lis_person_name_given),
+          :last_name => lookup(:last_name, @tp.lis_person_name_family),
+          :image => lookup(:image, @tp.user_image)
         }
       end
       
@@ -43,17 +48,15 @@ module OmniAuth
       
       #define extra hash
       extra do
-        { :raw_info => @tp.to_params }
+        {
+           :context_id => lookup(:context_id, @tp.context_id),
+           :context_name => lookup(:context_name, @tp.context_label),
+           :raw_info => @tp.to_params
+        }
       end
-      
-      private
-      
-      def valid_lti?
-        key = request.params['oauth_consumer_key']
-        log :info, "Checking LTI params for key #{key}: #{request.params}"
-        @tp = IMS::LTI::ToolProvider.new(key, options.oauth_credentials[key], request.params)
-        log :info, "Valid request? #{@tp.valid_request!(request)}"
-        @tp.valid_request!(request)
+
+      def lookup(field, default = nil)
+        @consumer[field.to_s].present? ? @tp.send(@consumer[field.to_s]) : default
       end
     end
   end
