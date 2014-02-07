@@ -51,7 +51,8 @@ module OmniAuth
         {
            :context_id => lookup(:context_id, @tp.context_id),
            :context_name => lookup(:context_name, @tp.context_label),
-           :raw_info => @tp.to_params
+           :raw_info => @tp.to_params,
+           :consumer => @consumer.keys.inject({}) { |result, key| result[key] = lookup(key, nil); result }
         }
       end
 
