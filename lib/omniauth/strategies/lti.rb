@@ -14,10 +14,9 @@ module OmniAuth
         key = request.params['oauth_consumer_key']
         secret = options.oauth_credentials.nil? ? nil : options.oauth_credentials[key]
         @tp = IMS::LTI::ToolProvider.new(key, secret, request.params)
+        env['lti.launch_params'] = @tp.to_params
         @tp.valid_request! request
         @consumer = options.consumers[@tp.tool_consumer_instance_guid] || {}
-        #save the launch parameters for use in later request
-        env['lti.launch_params'] = @tp.to_params
         super
       rescue ::OAuth::Unauthorized => e
         #Don't pass the exception to fail! because it isn't well formed
