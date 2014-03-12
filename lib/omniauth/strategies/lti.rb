@@ -15,6 +15,11 @@ module OmniAuth
         secret = options.oauth_credentials.nil? ? nil : options.oauth_credentials[key]
         @tp = IMS::LTI::ToolProvider.new(key, secret, request.params)
         env['lti.launch_params'] = @tp.to_params
+        log :info, '%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:'
+        log :info, "options #{options}"
+        log :info, "tp #{@tp.inspect}"
+        log :info, "@tp.valid_request! #{@tp.valid_request! request}"
+        log :info, '%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:%:'
         @tp.valid_request! request
         @consumer = options.consumers[@tp.tool_consumer_instance_guid] || {}
         super
